@@ -30,12 +30,22 @@ export class AuthService {
   ) {}
 
   async login(username: string, password: string, ua?: string, ip?: string) {
-    const u = await this.users.findByUsername(username);
+    const u = await this.users.findByUsername(username, password);
     if (!u || u.STATUS !== 'A') throw new UnauthorizedException('Invalid');
-    const ok = await bcrypt.compare(password, u.PASSWORD_HASH);
-    if (!ok) throw new UnauthorizedException('Invalid');
-    await this.users.markLastLogin(u.ID);
-    return this.issue(u.ID, u.USERNAME, ua, ip);
+    // const ok = await bcrypt.compare(password, u.PASSWORD_HASH);
+    // if (!ok) throw new UnauthorizedException('Invalid');
+    // await this.users.markLastLogin(u.ID);
+    // return this.issue(u.ID, u.USERNAME, ua, ip);
+    
+    const accessToken = await this.jwt.signAsync({ username: u.USERNAME });
+    const refreshToken = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(now().getTime() + this.refreshTtlMs);
+    return {
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer',
+      expiresIn: this.accessTtl,
+    };
   }
 
   private async issue(uid: number, uname: string, ua?: string, ip?: string) {
